@@ -32,7 +32,7 @@ WOE(Weight of Evidence)，翻译为“证据权重”。它是自变量的一种
 \begin{equation}
 woe_i = \ln(\frac{B_i/B_T}{G_i/G_T})
 \end{equation}
-其中，$B$代表风险用户，$G$代表正常用户，$i$代表第变量的$i$个bin或group，$B_T=\sum_{i}B_i$,$G_T=\sum_{i}G_i$。
+其中，$B$代表风险用户，$G$代表正常用户，$i$代表变量的$i$个bin或group，$B_T=\sum_{i}B_i$,$G_T=\sum_{i}G_i$。
 
 下面的数据表展示了这些$woe_i$的计算。
 \begin{equation}
@@ -110,5 +110,52 @@ IV是与WOE密切相关的一个指标，在应用实践中，评价标准可参
 \hline
 \end{array}
 \end{equation}
-一般我们根据IV取值在选择变量。
+一般我们根据IV取值在选择变量。通常筛选IV值>0.1的特征字段。
 
+### 逻辑回归
+在通过IV选择了合适的特征，并计算了各自特征的woe值，我们就根据所得到的特征的woe值构造逻辑回归模型，即
+\begin{equation}
+\ln\frac{p}{1-p}=\theta_1x_1+\cdots+\theta_nx_n
+\end{equation}
+其中，$p$为客户逾期的概率。
+
+最后，得到相应的系数$\theta_i$。
+
+## 评分卡模型转换
+设p为客户违约的概率，那么正常的概率为1-p，则
+$$
+O d d s=\frac{p}{1-p}
+$$
+评分卡的分值计算，可以通过分值表示为比率对数的线性表达式来定义，即
+$$
+\text { Score }=A-B * \ln (O d d s)
+$$
+常数A、B可以通过将两个假设的分值带入计算得到：
+1) 基准分, 即给某个特定的比率 $\theta_{0}$ 时，预期的分值为 $P_{0}$，通常，业内的基准分为500/600/650。
+
+2) PDO（ point of double odds ），即比率翻倍时的分数。比如，odds翻倍时，分值减少50。即比率为 $2 \theta_{0}$ 的点的分值应该为 $P_{0}-P D O$
+
+由以上两个规则，我们可以得到：
+$$
+\begin{array}{l}
+P_{0}=A-B* \ln \left(\theta_{0}\right) \\
+P_{0}-P D O=A-B* \ln \left(2 \theta_{0}\right)
+\end{array}
+$$
+求解得：
+$$
+\begin{array}{l}
+B=\frac{P D O}{\ln 2}   \\
+A=P_{0}+B^{*} \ln \left(\theta_{0}\right)
+\end{array}
+$$
+通过上面的逻辑回归模型，求得的违约概率： $p=\frac{1}{1+e^{-} \theta^{T} x}$，将公式变化下，可得
+$$
+\ln \left(\frac{p}{1-p}\right)=\theta^{T} x \quad, \text { 即 } \ln (o d d s)=\theta^{T} x
+$$
+评分卡的逻辑是Odds的变动与评分变动的映射，即把Odds映射为评分，因此，可以得到
+$$
+\text { Score }=A-B\left\{\theta_{0}+\theta_{1} x_{1}+\ldots+\theta_{n} x_{n}\right\}
+$$
+以上就是评分卡模型的转换规则。
+以下，我们以基准分600，此时对应的的odd为2%，并假设odds翻倍时，分值减少50，在这上面构建评分卡。
